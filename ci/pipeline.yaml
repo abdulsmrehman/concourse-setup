@@ -1,0 +1,46 @@
+resources:
+- name: repo
+  type: git
+  source:
+    uri: https://github.com/abdulsmrehman/concourse-setup.git
+jobs:
+- name: sample-concourse-job
+  plan:
+    - get: repo # Add a step reference to resource.Way to connect job with resource.
+      trigger: true #this is a final piece in telling the concourse to trigger the sample job whenever repo resource emits a new version.
+    - task: sample-concourse-task
+      config:
+        platform: linux #Tells Concourse which type of worker this task should run on.
+        # this is one way of telling the concourse which container image to use for a task.
+        image_resource:
+          type: registry-image
+          source:
+            repository: busybox #images are pulled from the docker hub by default.
+        outputs:
+          - name: the-artifact
+        run:
+          # this is a neat way of embedding a script into as task.
+          path: sh
+          args:
+          - -cx
+          - |
+            ls -l .
+            echo "message is send from task-1!" > the-artifact/message
+    # creating second task to read the message from first task.
+    - task: read-artifact-message
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: busybox
+        inputs:
+          - name: the-artifact
+        run:
+          path: sh
+          args:
+          - -cx
+          - |
+            ls -l .
+            cat the-artifact/message
+
